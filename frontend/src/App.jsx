@@ -15,7 +15,7 @@ export default function App() {
     {
       id: 0,
       type: "text",
-      text: "Hello! Ask me for weather (e.g., \u201cweather in Houston\u201d).",
+      text: "Hello! Ask me anything.",
       sender: "bot",
       ts: Date.now(),
     },
@@ -112,6 +112,19 @@ export default function App() {
       },
     ]);
 
+          {error && <div className="error">{error}</div>}
+
+          <div className="meta">
+            <span className="dot" />
+            Backend: <code>{API_URL}</code>
+          </div>
+        </div>
+      </div>
+  );
+}
+
+function Message({ text, sender, ts }) {
+  const isUser = sender === "user";
   return (
     <div className="page">
       <div className="card">
@@ -306,4 +319,3 @@ function Legend() {
     </div>
   );
 }
-

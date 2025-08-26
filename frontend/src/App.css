@@ -41,6 +41,9 @@ body {
   grid-template-rows: auto 1fr auto auto;
   overflow: hidden;
 }
+.brand svg { color: var(--success); }
+
+.actions { display: flex; gap: 8px; }
 
 .header {
   display: flex; align-items: center; justify-content: space-between;
@@ -88,6 +91,8 @@ body {
 .bubble.bot {
   background: rgba(255,255,255,0.06);
 }
+.avatar.user { color: #0b0f14; background: #c9e2ff; }
+.avatar.bot { color: #86efac; background: rgba(134,239,172,0.12); }
 
 .avatar {
   width: 34px; height: 34px; border-radius: 50%;
@@ -96,7 +101,6 @@ body {
 }
 .avatar.user { color: #0b0f14; background: #c9e2ff; }
 .avatar.bot { color: #86efac; background: rgba(134,239,172,0.12); }
-
 .typing {
   width: 70px; display: flex; gap: 6px; align-items: center;
 }
@@ -120,7 +124,8 @@ body {
   border-top: 1px solid var(--panel-strong);
   background: linear-gradient(180deg, rgba(255,255,255,0), rgba(255,255,255,0.05));
 }
-
+.typing .dot2 { animation-delay: .15s; }
+.typing .dot3 { animation-delay: .3s; }
 .composer textarea {
   resize: none; overflow: auto;
   font: inherit; color: var(--text);
@@ -130,7 +135,6 @@ body {
   padding: 12px 14px;
   min-height: 48px;
 }
-
 .btn {
   height: 48px; padding: 0 16px; border-radius: 12px;
   border: 1px solid var(--panel-strong);
@@ -200,7 +204,6 @@ body {
   padding: 8px 10px; vertical-align: top;
 }
 .content th, .md-th { background: rgba(255,255,255,0.08); text-align: left; }
-
 /* Weather card styles */
 .weather-card {
   display: grid;
@@ -227,4 +230,3 @@ body {
 .chip.good { background: rgba(16,185,129,.18); }
 .chip.fair { background: rgba(59,130,246,.18); }
 .chip.poor { background: rgba(244,63,94,.18); }
-

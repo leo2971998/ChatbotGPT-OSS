@@ -1,3 +1,4 @@
+# app.py
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import os, re, requests
@@ -33,9 +34,58 @@ def call_llm(text: str) -> str:
     data = r.json()
     return data["choices"][0]["message"]["content"]
 
-app = Flask(__name__)
-CORS(app)
+# === Config ==================================================================
+# Point to your local Ollama's OpenAI-compatible Chat Completions endpoint.
+OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434/v1/chat/completions")
+MODEL = os.getenv("MODEL", "gpt-oss:20b")
+ENABLE_WEATHER = os.getenv("ENABLE_WEATHER", "1") == "1"   # set to "0" to disable
 
+# Units note: Open-Meteo defaults to °C and km/h for these fields.
+
+# === App =====================================================================
+app = Flask(__name__)
+CORS(app)  # for local dev; restrict in production
+
+# === Helpers =================================================================
+def safe_round(x):
+    try:
+        return round(float(x))
+    except Exception:
+        return None
+
+def as_deg(x):
+    v = safe_round(x)
+    return f"{v}°" if v is not None else "—"
+
+def as_pct(x):
+    v = safe_round(x)
+    return f"{v}%" if v is not None else "—"
+
+def as_speed(x):
+    v = safe_round(x)
+    return f"{v} km/h" if v is not None else "—"
+
+def find_weather_city(text: str):
+    """
+    Extract a probable city name from prompts like:
+      - 'weather in Austin'
+      - 'what's the weather at Paris, FR?'
+    """
+    m = re.search(r"\bweather\b.*?\b(?:in|at|for)\b\s+([A-Za-z .,'-]+)", text, flags=re.I)
+    return m.group(1).strip() if m else None
+
+def get_weather_card(city: str):
+    """Fetch weather data from Open-Meteo and format a UI card payload."""
+    # 1) geocode
+    g = requests.get(
+        "https://geocoding-api.open-meteo.com/v1/search",
+        params={"name": city, "count": 1},
+        timeout=10,
+    )
+    g.raise_for_status()
+    results = g.json().get("results") or []
+    if not results:
+        return None
 
 # --- Helpers -----------------------------------------------------------------
 def find_weather_city(text: str) -> str | None:
@@ -143,8 +193,6 @@ WEATHER_ICONS = {
     99: "⛈️",
 }
 
-
-# --- Routes ------------------------------------------------------------------
 @app.post("/chat")
 def chat():
     payload = request.get_json(silent=True) or {}
@@ -167,12 +215,10 @@ def chat():
             return jsonify({"reply": reply, "ui": card})
         except Exception as exc:
             return jsonify({"error": f"Weather lookup failed: {exc}"}), 500
-
     try:
         reply = call_llm(text)
         return jsonify({"reply": reply})
-    except Exception as exc:
-        return jsonify({"error": str(exc)}), 500
+    except Exception as exc:        return jsonify({"error": str(exc)}), 500
 
 
 @app.get("/health")
@@ -182,4 +228,3 @@ def health():
 
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=5000, debug=True)
-
