@@ -209,6 +209,27 @@ function Typing() {
         <span className="dot2" />
         <span className="dot3" />
       </div>
+      <div className="wc-main">
+        <div className="wc-temp">{Math.round(temperature)}°</div>
+        <div className="wc-feels">Feels {Math.round(feelsLike)}°</div>
+      </div>
+      <div className="wc-right">
+        <div>H:{Math.round(high)}° / L:{Math.round(low)}°</div>
+        <div>Humidity: {Math.round(humidity)}%</div>
+        <div>Wind: {Math.round(wind)} km/h</div>
+        <div>UV: {uv ?? '—'}</div>
+        <Legend />
+      </div>
+    </div>
+  )
+}
+
+function Legend() {
+  return (
+    <div className="legend">
+      <span className="chip good">Good</span>
+      <span className="chip fair">Fair</span>
+      <span className="chip poor">Poor</span>
     </div>
   );
 }
