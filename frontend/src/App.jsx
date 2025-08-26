@@ -1,4 +1,9 @@
 import React, { useState } from 'react'
+import ReactMarkdown from 'react-markdown'
+import remarkMath from 'remark-math'
+import remarkGfm from 'remark-gfm'
+import rehypeKatex from 'rehype-katex'
+import 'katex/dist/katex.min.css'
 import './App.css'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'
@@ -47,7 +52,21 @@ export default function App() {
             <WeatherCard key={msg.id} data={msg.card} />
           ) : (
             <div key={msg.id} className={`message ${msg.sender}`}>
-              {msg.text}
+              <ReactMarkdown
+                remarkPlugins={[remarkMath, remarkGfm]}
+                rehypePlugins={[rehypeKatex]}
+                components={{
+                  code({ inline, className, children, ...props }) {
+                    return inline ? (
+                      <code className="inline-code" {...props}>{children}</code>
+                    ) : (
+                      <pre className="code-block"><code {...props}>{children}</code></pre>
+                    )
+                  },
+                }}
+              >
+                {msg.text}
+              </ReactMarkdown>
             </div>
           )
         )}

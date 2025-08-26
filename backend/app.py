@@ -145,7 +145,19 @@ def chat():
         resp = requests.post(
             OLLAMA_URL,
             headers={"Authorization": "Bearer ollama", "Content-Type": "application/json"},
-            json={"model": MODEL, "messages": [{"role": "user", "content": text}]},
+            json={
+                "model": MODEL,
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": (
+                            "You are a helpful assistant. When using math, format with LaTeX: "
+                            "inline as $...$ and display as $$...$$. Do not emit HTML."
+                        ),
+                    },
+                    {"role": "user", "content": text},
+                ],
+            },
             timeout=60,
         )
         resp.raise_for_status()

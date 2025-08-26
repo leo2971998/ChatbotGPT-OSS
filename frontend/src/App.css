@@ -97,3 +97,30 @@
 .chip.good { background: rgba(16,185,129,.18); }
 .chip.fair { background: rgba(59,130,246,.18); }
 .chip.poor { background: rgba(244,63,94,.18); }
+
+/* Inline code styling */
+.inline-code {
+  padding: 0.15rem 0.33rem;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.12);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.92em;
+}
+
+/* Fenced code blocks */
+.code-block {
+  margin: 8px 0 2px;
+  padding: 12px;
+  border-radius: 10px;
+  background: rgba(0,0,0,0.35);
+  overflow-x: auto;
+}
+
+/* KaTeX tweaks */
+.katex-display {
+  margin: 8px 0;
+}
+.katex {
+  font-size: 1.02em;
+}
