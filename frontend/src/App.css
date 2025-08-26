@@ -59,3 +59,68 @@
   border-radius: 20px;
   cursor: pointer;
 }
+
+/* Weather card styles */
+.weather-card {
+  display: grid;
+  grid-template-columns: 1fr auto 1.2fr;
+  gap: 14px;
+  border: 1px solid #ccc;
+  background: #f9f9f9;
+  border-radius: 16px;
+  padding: 14px;
+  margin: 4px 0;
+}
+.wc-left { display: flex; align-items: center; gap: 10px; }
+.wc-icon { font-size: 28px; }
+.wc-location { font-weight: 700; }
+.wc-cond { color: #666; font-size: 13px; }
+
+.wc-main {
+  display: grid;
+  place-items: center;
+  border-left: 1px dashed #ccc;
+  border-right: 1px dashed #ccc;
+  padding: 0 14px;
+}
+.wc-temp { font-size: 34px; font-weight: 800; letter-spacing: 0.5px; }
+.wc-feels { font-size: 12px; color: #666; }
+
+.wc-right { display: grid; gap: 6px; font-size: 13px; }
+.legend { display: flex; gap: 6px; margin-top: 6px; }
+.chip {
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  border: 1px solid #ccc;
+}
+.chip.good { background: rgba(16,185,129,.18); }
+.chip.fair { background: rgba(59,130,246,.18); }
+.chip.poor { background: rgba(244,63,94,.18); }
+
+/* Inline code styling */
+.inline-code {
+  padding: 0.15rem 0.33rem;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.12);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.92em;
+}
+
+/* Fenced code blocks */
+.code-block {
+  margin: 8px 0 2px;
+  padding: 12px;
+  border-radius: 10px;
+  background: rgba(0,0,0,0.35);
+  overflow-x: auto;
+}
+
+/* KaTeX tweaks */
+.katex-display {
+  margin: 8px 0;
+}
+.katex {
+  font-size: 1.02em;
+}
