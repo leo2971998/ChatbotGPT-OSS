@@ -41,6 +41,9 @@ body {
   grid-template-rows: auto 1fr auto auto;
   overflow: hidden;
 }
+.brand svg { color: var(--success); }
+
+.actions { display: flex; gap: 8px; }
 
 .header {
   display: flex; align-items: center; justify-content: space-between;
@@ -88,6 +91,8 @@ body {
 .bubble.bot {
   background: rgba(255,255,255,0.06);
 }
+.avatar.user { color: #0b0f14; background: #c9e2ff; }
+.avatar.bot { color: #86efac; background: rgba(134,239,172,0.12); }
 
 .avatar {
   width: 34px; height: 34px; border-radius: 50%;
@@ -96,7 +101,6 @@ body {
 }
 .avatar.user { color: #0b0f14; background: #c9e2ff; }
 .avatar.bot { color: #86efac; background: rgba(134,239,172,0.12); }
-
 .typing {
   width: 70px; display: flex; gap: 6px; align-items: center;
 }
@@ -120,7 +124,8 @@ body {
   border-top: 1px solid var(--panel-strong);
   background: linear-gradient(180deg, rgba(255,255,255,0), rgba(255,255,255,0.05));
 }
-
+.typing .dot2 { animation-delay: .15s; }
+.typing .dot3 { animation-delay: .3s; }
 .composer textarea {
   resize: none; overflow: auto;
   font: inherit; color: var(--text);
@@ -130,7 +135,6 @@ body {
   padding: 12px 14px;
   min-height: 48px;
 }
-
 .btn {
   height: 48px; padding: 0 16px; border-radius: 12px;
   border: 1px solid var(--panel-strong);
@@ -171,10 +175,7 @@ body {
 
 /* Fenced code blocks */
 .code-block {
-  margin: 8px 0 2px;
-  padding: 12px;
   border-radius: 10px;
-  background: rgba(0,0,0,0.35);
   overflow-x: auto;
 }
 
@@ -186,6 +187,23 @@ body {
   font-size: 1.02em;
 }
 
+/* Markdown polish inside bubbles */
+.content h1, .content h2, .content h3 { margin: 8px 0 6px; }
+.content p { margin: 6px 0; }
+.content ul, .content ol { margin: 6px 0; padding-left: 1.2rem; }
+.content blockquote {
+  margin: 8px 0; padding: 6px 10px;
+  border-left: 3px solid var(--panel-strong);
+  background: rgba(255,255,255,0.05);
+}
+
+/* Tables like in your screenshot */
+.content table, .md-table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+.content th, .content td, .md-th, .md-td {
+  border: 1px solid var(--panel-strong);
+  padding: 8px 10px; vertical-align: top;
+}
+.content th, .md-th { background: rgba(255,255,255,0.08); text-align: left; }
 /* Weather card styles */
 .weather-card {
   display: grid;
