@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import os, re, requests
+import re, requests
 
 # Optional: adjust these if running Ollama elsewhere
 OLLAMA_URL = "http://localhost:11434/v1/chat/completions"
@@ -46,7 +46,12 @@ def find_weather_city(text: str) -> str | None:
     return None
 
 
-def get_weather_card(city: str):
+def wants_fahrenheit(text: str) -> bool:
+    """Return True if the prompt requests imperial units."""
+    return bool(re.search(r"\b(fahrenheit|degree\s*f|deg\s*f|°f)\b", text, flags=re.I))
+
+
+def get_weather_card(city: str, *, fahrenheit: bool = False):
     """Fetch weather data from Open-Meteo and format a UI card payload."""
     geo = requests.get(
         "https://geocoding-api.open-meteo.com/v1/search",
@@ -61,15 +66,24 @@ def get_weather_card(city: str):
     lon = results[0]["longitude"]
     resolved = f"{results[0]['name']}, {results[0].get('admin1', '') or results[0].get('country_code', '')}".strip(", ")
 
+    params = {
+        "latitude": lat,
+        "longitude": lon,
+        "current": "temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code",
+        "daily": "temperature_2m_max,temperature_2m_min,uv_index_max",
+        "timezone": "auto",
+    }
+    if fahrenheit:
+        params.update({"temperature_unit": "fahrenheit", "wind_speed_unit": "mph"})
+        temp_unit = "°F"
+        wind_unit = "mph"
+    else:
+        temp_unit = "°C"
+        wind_unit = "km/h"
+
     weather = requests.get(
         "https://api.open-meteo.com/v1/forecast",
-        params={
-            "latitude": lat,
-            "longitude": lon,
-            "current": "temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code",
-            "daily": "temperature_2m_max,temperature_2m_min,uv_index_max",
-            "timezone": "auto",
-        },
+        params=params,
         timeout=10,
     )
     weather.raise_for_status()
@@ -91,6 +105,7 @@ def get_weather_card(city: str):
         "high": (daily.get("temperature_2m_max") or [None])[0],
         "low": (daily.get("temperature_2m_min") or [None])[0],
         "uv": (daily.get("uv_index_max") or [None])[0],
+        "units": {"temp": temp_unit, "wind": wind_unit},
     }
 
 
@@ -155,14 +170,16 @@ def chat():
     city = find_weather_city(text)
     if city:
         try:
-            card = get_weather_card(city)
+            card = get_weather_card(city, fahrenheit=wants_fahrenheit(text))
             if not card:
                 return jsonify({"reply": f"Sorry, I couldn't find weather for '{city}'."})
+            t = card["units"]["temp"]
+            w = card["units"]["wind"]
             reply = (
                 f"{card['icon']} {card['location']}: {card['condition']}. "
-                f"{round(card['temperature'])}°C feels {round(card['feelsLike'])}°C. "
-                f"H:{round(card['high'])}° / L:{round(card['low'])}°  •  "
-                f"Humidity {round(card['humidity'])}%  •  Wind {round(card['wind'])} km/h."
+                f"{round(card['temperature'])}{t} feels {round(card['feelsLike'])}{t}. "
+                f"H:{round(card['high'])}{t} / L:{round(card['low'])}{t}  •  "
+                f"Humidity {round(card['humidity'])}%  •  Wind {round(card['wind'])} {w}."
             )
             return jsonify({"reply": reply, "ui": card})
         except Exception as exc:

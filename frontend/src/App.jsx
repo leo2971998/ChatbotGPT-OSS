@@ -9,6 +9,18 @@ import "./App.css";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:5000";
 
+function normalizeLatexDelimiters(s) {
+  // \[ ... \] → $$ ... $$
+  s = s.replace(/\\\[(.*?)\\\]/gs, (_m, inner) => `$$\n${inner.trim()}\n$$`);
+  // \( ... \) → $ ... $
+  s = s.replace(/\\\((.*?)\\\)/gs, (_m, inner) => `$${inner.trim()}$`);
+  // one-line [ ... ] → $$ ... $$
+  s = s.replace(/^\s*\[(.+?)\]\s*$/gms, (_m, inner) => `$$\n${inner.trim()}\n$$`);
+  // cleanup commas around braces
+  s = s.replace(/\{,\s*/g, "{").replace(/,\s*\}/g, "}");
+  return s;
+}
+
 export default function App() {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState([
@@ -169,13 +181,14 @@ export default function App() {
 
 function Message({ text, sender, ts }) {
   const isUser = sender === "user";
+  const normalized = normalizeLatexDelimiters(text);
   return (
     <div className={`row ${isUser ? "right" : "left"}`}>
       {!isUser && <AvatarBot />}
       <div className={`bubble ${isUser ? "user" : "bot"}`}>
         <div className="content">
           <ReactMarkdown
-            remarkPlugins={[remarkMath, remarkGfm]}
+            remarkPlugins={[[remarkMath, { singleDollarTextMath: true }], remarkGfm]}
             rehypePlugins={[[rehypeKatex, { throwOnError: false, strict: "ignore" }]]}
             components={{
               code({ inline, className, children, ...props }) {
@@ -199,7 +212,7 @@ function Message({ text, sender, ts }) {
               },
             }}
           >
-            {text}
+            {normalized}
           </ReactMarkdown>
         </div>
         <div className="timestamp">{new Date(ts).toLocaleTimeString()}</div>
@@ -272,25 +285,29 @@ function WeatherCard({ data }) {
     humidity,
     wind,
     uv,
+    units,
   } = data || {};
+  const t = units?.temp || "°C";
+  const w = units?.wind || "km/h";
+  const d = (v) => (Number.isFinite(v) ? Math.round(v) : "—");
   return (
     <div className="weather-card">
       <div className="wc-left">
-        <div className="wc-icon">{icon || "\ud83c\udf21\ufe0f"}</div>
+        <div className="wc-icon">{icon || "🌡️"}</div>
         <div>
           <div className="wc-location">{location}</div>
           <div className="wc-cond">{condition}</div>
         </div>
       </div>
       <div className="wc-main">
-        <div className="wc-temp">{Math.round(temperature)}\u00b0</div>
-        <div className="wc-feels">Feels {Math.round(feelsLike)}\u00b0</div>
+        <div className="wc-temp">{d(temperature)}{t}</div>
+        <div className="wc-feels">Feels {d(feelsLike)}{t}</div>
       </div>
       <div className="wc-right">
-        <div>H:{Math.round(high)}\u00b0 / L:{Math.round(low)}\u00b0</div>
-        <div>Humidity: {Math.round(humidity)}%</div>
-        <div>Wind: {Math.round(wind)} km/h</div>
-        <div>UV: {uv ?? "\u2014"}</div>
+        <div>H:{d(high)}{t} / L:{d(low)}{t}</div>
+        <div>Humidity: {d(humidity)}%</div>
+        <div>Wind: {d(wind)} {w}</div>
+        <div>UV: {uv ?? "—"}</div>
         <Legend />
       </div>
     </div>
