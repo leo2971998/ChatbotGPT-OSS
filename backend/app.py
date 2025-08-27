@@ -1,28 +1,202 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from openai import OpenAI
+import re, requests
+
+# Optional: adjust these if running Ollama elsewhere
+OLLAMA_URL = "http://localhost:11434/v1/chat/completions"
+MODEL = "gpt-oss:20b"
+
+SYSTEM_MD = (
+    "You are a helpful assistant. Always answer in GitHub-Flavored Markdown. "
+    "Use headings, bullet lists, and tables where helpful. "
+    "Typeset math with LaTeX: inline as $...$ and display as $$...$$. "
+    "Do not emit HTML tags."
+)
+
+
+def call_llm(text: str) -> str:
+    payload = {
+        "model": MODEL,
+        "messages": [
+            {"role": "system", "content": SYSTEM_MD},
+            {"role": "user", "content": text},
+        ],
+        "temperature": 0.7,
+    }
+    r = requests.post(
+        OLLAMA_URL,
+        headers={"Authorization": "Bearer ollama", "Content-Type": "application/json"},
+        json=payload,
+        timeout=60,
+    )
+    r.raise_for_status()
+    data = r.json()
+    return data["choices"][0]["message"]["content"]
 
 app = Flask(__name__)
 CORS(app)
 
-client = OpenAI(
-    base_url='http://localhost:11434/v1',
-    api_key='ollama',
-)
 
-@app.route('/chat', methods=['POST'])
+# --- Helpers -----------------------------------------------------------------
+def find_weather_city(text: str) -> str | None:
+    """Extract a city name from prompts like 'weather in Austin'."""
+    match = re.search(r"\bweather\b.*?\b(?:in|at|for)\b\s+([A-Za-z .,'-]+)", text, flags=re.I)
+    if match:
+        return match.group(1).strip()
+    return None
+
+
+def wants_fahrenheit(text: str) -> bool:
+    """Return True if the prompt requests imperial units."""
+    return bool(re.search(r"\b(fahrenheit|degree\s*f|deg\s*f|°f)\b", text, flags=re.I))
+
+
+def get_weather_card(city: str, *, fahrenheit: bool = False):
+    """Fetch weather data from Open-Meteo and format a UI card payload."""
+    geo = requests.get(
+        "https://geocoding-api.open-meteo.com/v1/search",
+        params={"name": city, "count": 1},
+        timeout=10,
+    )
+    geo.raise_for_status()
+    results = geo.json().get("results") or []
+    if not results:
+        return None
+    lat = results[0]["latitude"]
+    lon = results[0]["longitude"]
+    resolved = f"{results[0]['name']}, {results[0].get('admin1', '') or results[0].get('country_code', '')}".strip(", ")
+
+    params = {
+        "latitude": lat,
+        "longitude": lon,
+        "current": "temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code",
+        "daily": "temperature_2m_max,temperature_2m_min,uv_index_max",
+        "timezone": "auto",
+    }
+    if fahrenheit:
+        params.update({"temperature_unit": "fahrenheit", "wind_speed_unit": "mph"})
+        temp_unit = "°F"
+        wind_unit = "mph"
+    else:
+        temp_unit = "°C"
+        wind_unit = "km/h"
+
+    weather = requests.get(
+        "https://api.open-meteo.com/v1/forecast",
+        params=params,
+        timeout=10,
+    )
+    weather.raise_for_status()
+    data = weather.json()
+    current = data.get("current", {})
+    daily = data.get("daily", {})
+
+    code = int(current.get("weather_code", 0))
+    label = WEATHER_CODES.get(code, "Unknown")
+    return {
+        "type": "weather",
+        "location": resolved,
+        "temperature": current.get("temperature_2m"),
+        "feelsLike": current.get("apparent_temperature"),
+        "humidity": current.get("relative_humidity_2m"),
+        "wind": current.get("wind_speed_10m"),
+        "condition": label,
+        "icon": WEATHER_ICONS.get(code, "🌡️"),
+        "high": (daily.get("temperature_2m_max") or [None])[0],
+        "low": (daily.get("temperature_2m_min") or [None])[0],
+        "uv": (daily.get("uv_index_max") or [None])[0],
+        "units": {"temp": temp_unit, "wind": wind_unit},
+    }
+
+
+WEATHER_CODES = {
+    0: "Clear sky",
+    1: "Mainly clear",
+    2: "Partly cloudy",
+    3: "Overcast",
+    45: "Fog",
+    48: "Depositing rime fog",
+    51: "Light drizzle",
+    53: "Drizzle",
+    55: "Dense drizzle",
+    61: "Light rain",
+    63: "Rain",
+    65: "Heavy rain",
+    71: "Light snow",
+    73: "Snow",
+    75: "Heavy snow",
+    80: "Rain showers",
+    81: "Heavy showers",
+    82: "Violent showers",
+    95: "Thunderstorm",
+    96: "Thunderstorm w/ hail",
+    99: "Thunderstorm w/ heavy hail",
+}
+
+
+WEATHER_ICONS = {
+    0: "☀️",
+    1: "🌤️",
+    2: "⛅",
+    3: "☁️",
+    45: "🌫️",
+    48: "🌫️",
+    51: "🌦️",
+    53: "🌦️",
+    55: "🌧️",
+    61: "🌦️",
+    63: "🌧️",
+    65: "🌧️",
+    71: "🌨️",
+    73: "❄️",
+    75: "❄️",
+    80: "🌦️",
+    81: "🌧️",
+    82: "⛈️",
+    95: "⛈️",
+    96: "⛈️",
+    99: "⛈️",
+}
+
+
+# --- Routes ------------------------------------------------------------------
+@app.post("/chat")
 def chat():
-    user_message = request.json.get('message')
-    if not user_message:
-        return jsonify({'error': 'Message is required'}), 400
-    try:
-        response = client.chat.completions.create(
-            model='gpt-oss:20b',
-            messages=[{'role': 'user', 'content': user_message}],
-        )
-        return jsonify({'reply': response.choices[0].message['content']})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    payload = request.get_json(silent=True) or {}
+    text = (payload.get("message") or "").strip()
+    if not text:
+        return jsonify({"error": "Message is required"}), 400
 
-if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    city = find_weather_city(text)
+    if city:
+        try:
+            card = get_weather_card(city, fahrenheit=wants_fahrenheit(text))
+            if not card:
+                return jsonify({"reply": f"Sorry, I couldn't find weather for '{city}'."})
+            t = card["units"]["temp"]
+            w = card["units"]["wind"]
+            reply = (
+                f"{card['icon']} {card['location']}: {card['condition']}. "
+                f"{round(card['temperature'])}{t} feels {round(card['feelsLike'])}{t}. "
+                f"H:{round(card['high'])}{t} / L:{round(card['low'])}{t}  •  "
+                f"Humidity {round(card['humidity'])}%  •  Wind {round(card['wind'])} {w}."
+            )
+            return jsonify({"reply": reply, "ui": card})
+        except Exception as exc:
+            return jsonify({"error": f"Weather lookup failed: {exc}"}), 500
+
+    try:
+        reply = call_llm(text)
+        return jsonify({"reply": reply})
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
+
+
+@app.get("/health")
+def health():
+    return jsonify({"status": "ok", "model": MODEL})
+
+
+if __name__ == "__main__":
+    app.run(host="127.0.0.1", port=5000, debug=True)
+
